@@ -22,11 +22,15 @@ import baritone.api.Settings;
 import baritone.utils.accessor.IEntityRenderManager;
 import baritone.utils.accessor.IRenderPipelines;
 import baritone.utils.accessor.IRenderType;
+import com.mojang.blaze3d.IndexType;
 import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.pipeline.*;
 import com.mojang.blaze3d.platform.BlendFactor;
 import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import java.nio.ByteBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.blockentity.BeaconRenderer;
@@ -137,11 +141,28 @@ public interface IRenderer {
     static void endLines(BufferBuilder bufferBuilder, boolean ignoredDepth) {
         MeshData meshData = bufferBuilder.build();
         if (meshData != null) {
-            if (ignoredDepth) {
-                // TODO: 26.2fix
-//                linesNoDepthRenderType.prepare().drawFromBuffer(meshData);
-            } else {
-//                linesWithDepthRenderType.draw(meshData);
+            try (meshData) {
+                ByteBuffer vertexData = meshData.vertexBuffer();
+                int indexCount = meshData.drawState().indexCount();
+                IndexType indexType = meshData.drawState().indexType();
+                PrimitiveTopology topology = meshData.drawState().primitiveTopology();
+
+                GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(
+                    () -> "baritone_lines",
+                    GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST,
+                    vertexData
+                );
+
+                RenderSystem.AutoStorageIndexBuffer autoIndices = RenderSystem.getSequentialBuffer(topology);
+                GpuBuffer indexBuffer = autoIndices.getBuffer(indexCount);
+
+                if (ignoredDepth) {
+                    linesNoDepthRenderType.prepare().drawFromBuffer(vertexBuffer, indexBuffer, indexType, 0, 0, indexCount);
+                } else {
+                    linesWithDepthRenderType.prepare().drawFromBuffer(vertexBuffer, indexBuffer, indexType, 0, 0, indexCount);
+                }
+
+                vertexBuffer.close();
             }
         }
     }
@@ -153,8 +174,25 @@ public interface IRenderer {
     static void endBuffer(BufferBuilder bufferBuilder, RenderType renderType) {
         MeshData meshData = bufferBuilder.build();
         if (meshData != null) {
-            // TODO: 26.2fix
-//            renderType.draw(meshData);
+            try (meshData) {
+                ByteBuffer vertexData = meshData.vertexBuffer();
+                int indexCount = meshData.drawState().indexCount();
+                IndexType indexType = meshData.drawState().indexType();
+                PrimitiveTopology topology = meshData.drawState().primitiveTopology();
+
+                GpuBuffer vertexBuffer = RenderSystem.getDevice().createBuffer(
+                    () -> "baritone_beacon_beam",
+                    GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST,
+                    vertexData
+                );
+
+                RenderSystem.AutoStorageIndexBuffer autoIndices = RenderSystem.getSequentialBuffer(topology);
+                GpuBuffer indexBuffer = autoIndices.getBuffer(indexCount);
+
+                renderType.prepare().drawFromBuffer(vertexBuffer, indexBuffer, indexType, 0, 0, indexCount);
+
+                vertexBuffer.close();
+            }
         }
     }
 
