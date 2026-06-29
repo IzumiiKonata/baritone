@@ -43,10 +43,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinWorldRenderer {
 
     @Inject(
-            method = "renderLevel",
+            method = "render",
             at = @At("RETURN")
     )
-    private void onStartHand(final GraphicsResourceAllocator graphicsResourceAllocator, final DeltaTracker deltaTracker, final boolean bl, final CameraRenderState cameraRenderState, final Matrix4fc worldMatrix, final GpuBufferSlice gpuBufferSlice, final Vector4f vector4f, final boolean bl2, final ChunkSectionsToRender chunkSectionsToRender, final CallbackInfo ci) {
+    private void onStartHand(final GraphicsResourceAllocator graphicsResourceAllocator, final DeltaTracker deltaTracker, final boolean bl, final CameraRenderState cameraRenderState, final Matrix4fc worldMatrix, final GpuBufferSlice gpuBufferSlice, final Vector4f vector4f, final boolean bl2, final CallbackInfo ci) {
         for (IBaritone ibaritone : BaritoneAPI.getProvider().getAllBaritones()) {
             PoseStack poseStack = new PoseStack();
             poseStack.mulPose(worldMatrix);

@@ -22,17 +22,15 @@ import baritone.api.Settings;
 import baritone.utils.accessor.IEntityRenderManager;
 import baritone.utils.accessor.IRenderPipelines;
 import baritone.utils.accessor.IRenderType;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.pipeline.*;
+import com.mojang.blaze3d.platform.BlendFactor;
 import com.mojang.blaze3d.platform.CompareOp;
-import com.mojang.blaze3d.platform.DestFactor;
-import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.blockentity.BeaconRenderer;
+import net.minecraft.client.renderer.feature.RenderTypeFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -51,10 +49,10 @@ public interface IRenderer {
     IEntityRenderManager renderManager = (IEntityRenderManager) Minecraft.getInstance().getEntityRenderDispatcher();
     Settings settings = BaritoneAPI.getSettings();
     BlendFunction BARITONE_LINES_BLEND = new BlendFunction(
-        SourceFactor.SRC_ALPHA,
-        DestFactor.ONE_MINUS_SRC_ALPHA,
-        SourceFactor.ONE,
-        DestFactor.ZERO
+        BlendFactor.SRC_ALPHA,
+        BlendFactor.ONE_MINUS_SRC_ALPHA,
+        BlendFactor.ONE,
+        BlendFactor.ZERO
     );
 
     RenderPipeline.Snippet BARITONE_LINES_SNIPPET = RenderPipeline.builder(((IRenderPipelines) new RenderPipelines()).getLinesSnippet())
@@ -63,17 +61,22 @@ public interface IRenderer {
         .withCull(false)
         .buildSnippet();
 
+    BindGroupLayout BARITONE_BEACON_BEAM_SNIPPET_LAYOUT = BindGroupLayout.builder()
+            .withSampler("Sampler0")
+            .build();
+
     RenderPipeline.Snippet BARITONE_BEACON_BEAM_SNIPPET = RenderPipeline.builder(((IRenderPipelines) new RenderPipelines()).getMatricesFogSnippet())
             .withVertexShader("core/rendertype_beacon_beam")
             .withFragmentShader("core/rendertype_beacon_beam")
-            .withSampler("Sampler0")
-            .withVertexFormat(DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS)
+            .withVertexBinding(0, DefaultVertexFormat.BLOCK)
+            .withBindGroupLayout(BARITONE_BEACON_BEAM_SNIPPET_LAYOUT)
             .buildSnippet();
 
     RenderPipeline BEACON_BEAM_OPAQUE = ((IRenderPipelines) new RenderPipelines()).baritone$registerPipeline(RenderPipeline.builder(BARITONE_BEACON_BEAM_SNIPPET)
             .withLocation("pipeline/baritone_beacon_beam_opaque")
             .withColorTargetState(ColorTargetState.DEFAULT)
             .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
             .withCull(true)
             .build());
 
@@ -81,6 +84,7 @@ public interface IRenderer {
             .withLocation("pipeline/baritone_beacon_beam_translucent")
             .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
             .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+            .withPrimitiveTopology(PrimitiveTopology.QUADS)
             .withCull(true)
             .build());
 
@@ -90,7 +94,6 @@ public interface IRenderer {
             .withLocation("pipelines/baritone_lines_with_depth")
             .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false))
             .build())
-            .bufferSize(256)
             .createRenderSetup()
     );
     RenderType linesNoDepthRenderType = ((IRenderType) RenderTypes.lines()).createRenderType(
@@ -99,7 +102,6 @@ public interface IRenderer {
                 .withLocation("pipelines/baritone_lines_no_depth")
                 .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                 .build())
-            .bufferSize(256)
             .createRenderSetup()
     );
 
@@ -125,7 +127,7 @@ public interface IRenderer {
 
     static BufferBuilder startLines(Color color, float alpha) {
         glColor(color, alpha);
-        return tessellator.begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH);
+        return tessellator.begin(PrimitiveTopology.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH);
     }
 
     static BufferBuilder startLines(Color color) {
@@ -136,21 +138,23 @@ public interface IRenderer {
         MeshData meshData = bufferBuilder.build();
         if (meshData != null) {
             if (ignoredDepth) {
-                linesNoDepthRenderType.draw(meshData);
+                // TODO: 26.2fix
+//                linesNoDepthRenderType.prepare().drawFromBuffer(meshData);
             } else {
-                linesWithDepthRenderType.draw(meshData);
+//                linesWithDepthRenderType.draw(meshData);
             }
         }
     }
 
     static BufferBuilder startBlockQuads() {
-        return tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
+        return tessellator.begin(PrimitiveTopology.QUADS, DefaultVertexFormat.BLOCK);
     }
 
     static void endBuffer(BufferBuilder bufferBuilder, RenderType renderType) {
         MeshData meshData = bufferBuilder.build();
         if (meshData != null) {
-            renderType.draw(meshData);
+            // TODO: 26.2fix
+//            renderType.draw(meshData);
         }
     }
 
